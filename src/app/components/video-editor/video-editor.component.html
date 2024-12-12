@@ -1,0 +1,122 @@
+<div class="video-editor-container">
+    <div class="video-upload-section">
+      <input 
+        type="file" 
+        (change)="onVideoUpload($event)" 
+        accept="video/*" 
+        class="file-input"
+      />
+    </div>
+
+    <div *ngIf="videoSrc()" class="video-player-section">
+      <video 
+        #videoPlayer
+        [src]="videoSrc()" 
+        [playbackRate]="playbackSpeed()"
+        (loadedmetadata)="onVideoMetadataLoaded($event)"
+        class="main-video"
+        controls
+      ></video>
+
+      <div class="video-controls">
+        <div class="speed-controls">
+          <label>Playback Speed:</label>
+          <select 
+            [(ngModel)]="playbackSpeed" 
+            class="speed-select"
+          >
+            <option [ngValue]="0.5">0.5x</option>
+            <option [ngValue]="1">1x</option>
+            <option [ngValue]="1.5">1.5x</option>
+            <option [ngValue]="2">2x</option>
+          </select>
+        </div>
+
+        <div class="clip-controls">
+          <div class="clip-input">
+            <label>Start Time (s):</label>
+            <input 
+              type="number" 
+              [(ngModel)]="clipStart" 
+              [max]="videoDuration()"
+              step="0.1"
+              min="0"
+            />
+          </div>
+          <div class="clip-input">
+            <label>End Time (s):</label>
+            <input 
+              type="number" 
+              [(ngModel)]="clipEnd" 
+              [max]="videoDuration()"
+              step="0.1"
+            />
+          </div>
+          <button 
+            (click)="createClip()" 
+            class="clip-button"
+            [disabled]="!videoSrc() || clipStart() >= clipEnd()"
+          >
+            Create Clip
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="clippedVideoSrc()" class="clipped-video-section">
+      <h3>Clipped Video Preview</h3>
+      <video 
+        [src]="clippedVideoSrc()" 
+        controls 
+        class="clipped-video"
+      ></video>
+      <button 
+        (click)="downloadClip()" 
+        class="download-button"
+      >
+        Download Clip
+      </button>
+    </div>
+    <div class="audio-controls-section">
+      <h3>Audio Controls</h3>
+      
+      <div class="audio-features">
+        <div class="volume-control">
+          <label>Volume:</label>
+          <input 
+            type="range" 
+            [ngModel]="audioVolume()" 
+            (ngModelChange)="adjustVolume($event)"
+            min="0" 
+            max="1" 
+            step="0.1"
+          />
+          <span>{{ (audioVolume() * 100).toFixed(0) }}%</span>
+        </div>
+
+        <div class="audio-effects">
+          <label>Audio Effects:</label>
+          <select 
+            [(ngModel)]="selectedAudioEffect"
+            (change)="applyAudioEffect()"
+          >
+            <option value="">None</option>
+            <option value="lowPass">Low Pass Filter</option>
+            <option value="highPass">High Pass Filter</option>
+            <option value="distortion">Distortion</option>
+          </select>
+        </div>
+
+        <div class="audio-analysis">
+          <button (click)="visualizeAudio()">
+            Audio Visualization
+          </button>
+        </div>
+      </div>
+
+      <!-- Audio Visualization Canvas -->
+      <canvas #audioVisualizerCanvas class="audio-visualizer"></canvas>
+    </div>
+
+
+  </div>

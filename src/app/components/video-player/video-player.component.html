@@ -1,0 +1,10 @@
+<div class="video-player">
+    <video #videoPlayer [src]="videoSrc" controls></video>
+    <div class="controls">
+      <button (click)="playVideo()">Play</button>
+      <button (click)="pauseVideo()">Pause</button>
+      <button (click)="muteVideo()">Mute</button>
+      <button (click)="unmuteVideo()">Unmute</button>
+      <input type="range" min="0" max="1" step="0.1" (input)="adjustVolume($event)">
+    </div>
+  </div>
