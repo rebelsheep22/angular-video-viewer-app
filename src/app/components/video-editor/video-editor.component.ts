@@ -25,6 +25,8 @@ export class VideoEditorComponent {
   clipEnd = signal<number>(0);
   audioVolume = signal<number>(1);
   selectedAudioEffect = signal<string>('');
+  exportedAudioSrc = signal<string | null>(null);
+
 
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaElementAudioSourceNode | null = null;
@@ -54,18 +56,14 @@ export class VideoEditorComponent {
     const start = this.clipStart();
     const end = this.clipEnd();
 
-    // Reset video to start of clip
     video.currentTime = start;
 
-    // Create a temporary canvas to draw video frames
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    // Array to store video chunks
     const chunks: Blob[] = [];
 
-    // Create media recorder
     const stream = canvas.captureStream();
     const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
@@ -76,13 +74,11 @@ export class VideoEditorComponent {
     };
 
     mediaRecorder.onstop = () => {
-      // Combine chunks into a single blob
       const blob = new Blob(chunks, { type: 'video/webm' });
       const videoURL = URL.createObjectURL(blob);
       this.clippedVideoSrc.set(videoURL);
     };
 
-    // Start recording
     mediaRecorder.start();
 
     const drawFrame = () => {
@@ -143,47 +139,38 @@ export class VideoEditorComponent {
     },
   };
   setupAudioContext(videoElement: HTMLVideoElement) {
-    // Create audio context
     this.audioContext = new AudioContext();
     
-    // Create source node from video
     this.sourceNode = this.audioContext.createMediaElementSource(videoElement);
     
-    // Create analyser for visualization
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 256;
 
-    // Connect nodes
     this.sourceNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
   }
   adjustVolume(volume: number) {
     this.audioVolume.set(volume);
     
-    // If audio context exists, modify gain
     if (this.sourceNode) {
       const gainNode = this.audioContext!.createGain();
       gainNode.gain.setValueAtTime(volume, this.audioContext!.currentTime);
       
-      // Reconnect audio path with new gain
       this.sourceNode.disconnect();
       this.sourceNode.connect(gainNode);
       gainNode.connect(this.audioContext!.destination);
     }
   }
   applyAudioEffect() {
-    // Clear previous effects
     this.clearAudioEffects();
 
     const effectName = this.selectedAudioEffect();
     if (!effectName || !this.sourceNode || !this.audioContext) return;
 
-    // Apply selected effect
     const effect = this.audioEffects[effectName];
     if (effect) {
       this.activeEffectNodes = effect.apply(this.audioContext, this.sourceNode);
       
-      // Reconnect to destination
       const lastNode = this.activeEffectNodes[this.activeEffectNodes.length - 1];
       lastNode.connect(this.audioContext.destination);
     }
@@ -252,6 +239,46 @@ export class VideoEditorComponent {
     }
     return curve;
   }
+
+  exportAudio() {
+    if (!this.audioContext || !this.sourceNode) {
+      console.error('Audio context or source node is not initialized.');
+      return;
+    }
+  
+    const dest = this.audioContext.createMediaStreamDestination();
+    this.sourceNode.connect(dest);
+  
+    const mediaRecorder = new MediaRecorder(dest.stream, { mimeType: 'audio/webm' });
+    const audioChunks: Blob[] = [];
+  
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+  
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioURL = URL.createObjectURL(audioBlob);
+  
+      this.exportedAudioSrc.set(audioURL);
+    };
+  
+    mediaRecorder.start();
+    setTimeout(() => mediaRecorder.stop(), this.videoDuration() * 1000);
+  }
+  
+  downloadExportedAudio() {
+    if (!this.exportedAudioSrc()) return;
+  
+    const link = document.createElement('a');
+    link.href = this.exportedAudioSrc()!;
+    link.download = 'audio_export.webm';
+    link.click();
+  }
+  
+  
 
 }
 
